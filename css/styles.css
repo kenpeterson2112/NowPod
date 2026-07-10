@@ -1,0 +1,204 @@
+/*
+  NowPod — styles
+  Single stylesheet for the POC. Organized as:
+    1. Design tokens (custom properties)
+    2. Base / reset
+    3. Layout (header, main, footer)
+    4. Views (setup, player, done)
+    5. Components (form fields, buttons, transcript, chime)
+    6. Utilities
+
+  Styling is intentionally lightweight scaffolding — enough to make the three
+  views legible and the structure visible. Polish comes later.
+*/
+
+/* ------------------------------------------------------------------ */
+/* 1. Design tokens                                                    */
+/* ------------------------------------------------------------------ */
+:root {
+  --color-bg: #0f1115;
+  --color-surface: #191c23;
+  --color-surface-alt: #21252e;
+  --color-text: #e8eaed;
+  --color-text-muted: #9aa0aa;
+  --color-accent: #6c8cff;
+  --color-accent-strong: #4f6fe6;
+  --color-host-a: #6c8cff; /* the Explainer */
+  --color-host-b: #ffb86c; /* the Enthusiast */
+  --color-border: #2a2f3a;
+
+  --radius: 10px;
+  --gap: 1rem;
+  --maxw: 720px;
+
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ------------------------------------------------------------------ */
+/* 2. Base                                                             */
+/* ------------------------------------------------------------------ */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+h1, h2, h3 { line-height: 1.2; }
+
+/* ------------------------------------------------------------------ */
+/* 3. Layout                                                           */
+/* ------------------------------------------------------------------ */
+.app-header,
+.app-main,
+.app-footer {
+  max-width: var(--maxw);
+  margin-inline: auto;
+  padding-inline: var(--gap);
+}
+
+.app-header { padding-top: 2rem; }
+.app-header__title { margin: 0; font-size: 2rem; letter-spacing: -0.02em; }
+.app-header__tagline { margin: 0.25rem 0 0; color: var(--color-text-muted); }
+
+.app-main { padding-block: 2rem; }
+
+.app-footer {
+  padding-block: 2rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------ */
+/* 4. Views                                                            */
+/* ------------------------------------------------------------------ */
+.view { }
+.view[hidden] { display: none; }
+.view__heading { font-size: 1.4rem; margin-top: 0; }
+
+/* ------------------------------------------------------------------ */
+/* 5. Components                                                       */
+/* ------------------------------------------------------------------ */
+
+/* --- Form fields --- */
+.setup-form { display: grid; gap: 1.25rem; }
+
+.field { display: grid; gap: 0.4rem; border: 0; padding: 0; margin: 0; }
+.field__label { font-weight: 600; font-size: 0.95rem; }
+
+.field__input {
+  padding: 0.7rem 0.8rem;
+  font-size: 1rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+.field__input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.field--depth { display: grid; gap: 0.5rem; }
+.radio { display: flex; align-items: center; gap: 0.5rem; }
+.radio small { color: var(--color-text-muted); }
+
+/* --- Buttons --- */
+.btn {
+  padding: 0.6rem 1.1rem;
+  font-size: 1rem;
+  color: var(--color-text);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.btn:hover { background: var(--color-border); }
+.btn--primary {
+  color: white;
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+}
+.btn--primary:hover { background: var(--color-accent); }
+
+/* --- Status line --- */
+.status { color: var(--color-text-muted); min-height: 1.25rem; }
+
+/* --- Player topbar --- */
+.player-topbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+.chapter-badge {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* --- Transcript (karaoke highlighting) --- */
+.transcript {
+  list-style: none;
+  margin: 1.5rem 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.line {
+  padding: 0.6rem 0.8rem;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  border-left: 3px solid transparent;
+  transition: background 0.2s ease, opacity 0.2s ease;
+  opacity: 0.75;
+}
+.line__speaker { font-weight: 700; margin-right: 0.4rem; }
+.line--host-a { border-left-color: var(--color-host-a); }
+.line--host-a .line__speaker { color: var(--color-host-a); }
+.line--host-b { border-left-color: var(--color-host-b); }
+.line--host-b .line__speaker { color: var(--color-host-b); }
+
+/* The active (currently-spoken) line */
+.line--active {
+  opacity: 1;
+  background: var(--color-surface-alt);
+}
+
+/* --- Chime panel --- */
+.chime {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent-strong);
+  border-radius: var(--radius);
+}
+.chime[hidden] { display: none; }
+.chime__heading { margin: 0 0 0.75rem; font-size: 1.05rem; }
+.chime__options {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.chime__redirect { display: flex; gap: 0.5rem; }
+.chime__redirect .field__input { flex: 1; }
+.chime__auto { margin: 0.6rem 0 0; font-size: 0.85rem; color: var(--color-text-muted); }
+
+/* --- Player controls --- */
+.player-controls { margin-top: 1rem; }
+
+/* ------------------------------------------------------------------ */
+/* 6. Utilities                                                        */
+/* ------------------------------------------------------------------ */
+.transcript--full { opacity: 1; }
+.transcript--full .line { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

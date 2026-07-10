@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Local env / secrets (never commit API keys)
+.env
+.env.local
+*.local
+
+# Editor / OS cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build output (none yet — this is a static site)
+dist/
+build/
