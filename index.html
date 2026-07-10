@@ -1,0 +1,118 @@
+<!--
+  NowPod — Bespoke Podcast Generator (POC)
+  Single-page app shell. Three views live in one document and are shown/hidden
+  by the state machine in js/app.js:
+    #setup-view   → topic + depth entry
+    #player-view  → transcript, now-playing, and the chime panel
+    #done-view    → full transcript + "start a new one"
+
+  This is scaffolding only — the views are marked up but the logic that drives
+  them is stubbed. See js/app.js.
+-->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NowPod — Bespoke Podcast Generator</title>
+<meta name="description" content="A steerable, chapter-by-chapter AI podcast generator (POC)." />
+<link rel="stylesheet" href="css/styles.css" />
+
+<header class="app-header">
+  <h1 class="app-header__title">NowPod</h1>
+  <p class="app-header__tagline">A podcast about anything — steer it as it plays.</p>
+</header>
+
+<main class="app-main">
+
+  <!-- ============================================================= -->
+  <!-- SETUP VIEW — topic + depth                                    -->
+  <!-- ============================================================= -->
+  <section id="setup-view" class="view view--active" aria-labelledby="setup-heading">
+    <h2 id="setup-heading" class="view__heading">What should we talk about?</h2>
+
+    <form id="setup-form" class="setup-form" autocomplete="off">
+      <label class="field">
+        <span class="field__label">Topic</span>
+        <input
+          id="topic-input"
+          class="field__input"
+          type="text"
+          name="topic"
+          placeholder="e.g. the history of the espresso machine"
+          required
+        />
+      </label>
+
+      <fieldset class="field field--depth">
+        <legend class="field__label">Depth</legend>
+        <label class="radio">
+          <input type="radio" name="depth" value="quick" checked />
+          <span>Quick <small>(2 chapters)</small></span>
+        </label>
+        <label class="radio">
+          <input type="radio" name="depth" value="deep" />
+          <span>Deep dive <small>(4 chapters)</small></span>
+        </label>
+      </fieldset>
+
+      <button type="submit" class="btn btn--primary" id="start-btn">Start</button>
+    </form>
+
+    <!-- Research/generation progress messaging surfaces here -->
+    <p id="setup-status" class="status" role="status" aria-live="polite"></p>
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- PLAYER VIEW — transcript + now-playing + chime                -->
+  <!-- ============================================================= -->
+  <section id="player-view" class="view" aria-labelledby="player-heading" hidden>
+    <div class="player-topbar">
+      <h2 id="player-heading" class="view__heading" data-slot="topic-title">Topic</h2>
+      <span class="chapter-badge" data-slot="chapter-progress">Chapter 1</span>
+    </div>
+
+    <!-- Transcript: dialogue lines injected here; active line gets .line--active -->
+    <ol id="transcript" class="transcript" aria-live="polite"></ol>
+
+    <!-- Chime panel: appears NON-MODALLY while the current chapter still plays.
+         Never pauses audio. options + free-text redirect. See spec §3, §5. -->
+    <aside id="chime-panel" class="chime" aria-labelledby="chime-heading" hidden>
+      <h3 id="chime-heading" class="chime__heading" data-slot="chime-prompt">
+        Next we could cover…
+      </h3>
+      <ul id="chime-options" class="chime__options"><!-- option buttons injected --></ul>
+      <form id="chime-redirect-form" class="chime__redirect">
+        <input
+          type="text"
+          id="chime-redirect-input"
+          class="field__input"
+          placeholder="…or tell us where to take it"
+        />
+        <button type="submit" class="btn">Steer</button>
+      </form>
+      <p class="chime__auto" data-slot="chime-countdown">
+        Otherwise we'll just carry on.
+      </p>
+    </aside>
+
+    <div class="player-controls">
+      <button type="button" class="btn" id="skip-btn">Skip to next chapter</button>
+    </div>
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- DONE VIEW — full transcript + restart                         -->
+  <!-- ============================================================= -->
+  <section id="done-view" class="view" aria-labelledby="done-heading" hidden>
+    <h2 id="done-heading" class="view__heading">That's a wrap.</h2>
+    <ol id="full-transcript" class="transcript transcript--full"></ol>
+    <button type="button" class="btn btn--primary" id="restart-btn">Start a new one</button>
+  </section>
+
+</main>
+
+<footer class="app-footer">
+  <small>NowPod POC · Wikipedia-sourced · browser TTS · not for production use</small>
+</footer>
+
+<!-- Modules load in dependency order; app.js wires everything together.
+     type="module" so each file can import/export cleanly. -->
+<script type="module" src="js/app.js"></script>
