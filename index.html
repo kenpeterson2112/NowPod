@@ -118,13 +118,19 @@
         <button type="submit" class="btn">Steer</button>
       </form>
       <p class="chime__auto" data-slot="chime-countdown">
-        Otherwise we'll just carry on.
+        …or just keep listening — we'll take the first path when the hosts wrap up.
       </p>
     </aside>
 
     <div class="player-controls">
       <button type="button" class="btn" id="skip-btn">Skip to next chapter</button>
     </div>
+
+    <!-- Reference list (spec §12): the actual articles this episode draws on -->
+    <section class="references" aria-label="References">
+      <h3 class="references__heading">References</h3>
+      <ul data-slot="references" class="references__list"></ul>
+    </section>
   </section>
 
   <!-- ============================================================= -->
@@ -133,13 +139,22 @@
   <section id="done-view" class="view" aria-labelledby="done-heading" hidden>
     <h2 id="done-heading" class="view__heading">That's a wrap.</h2>
     <ol id="full-transcript" class="transcript transcript--full"></ol>
+    <section class="references" aria-label="References">
+      <h3 class="references__heading">References</h3>
+      <ul data-slot="references" class="references__list"></ul>
+    </section>
     <button type="button" class="btn btn--primary" id="restart-btn">Start a new one</button>
   </section>
 
 </main>
 
 <footer class="app-footer">
-  <small>NowPod POC · Wikipedia-sourced · browser TTS · not for production use</small>
+  <!-- Persistent, unobtrusive disclaimer (spec §12) -->
+  <small class="disclaimer">
+    NowPod uses AI and can make mistakes. Double-check anything important, and
+    check the reference list before citing this.
+  </small>
+  <small>NowPod POC · Wikipedia + Wikinews · browser TTS · not for production use</small>
 </footer>
 
 <!-- Modules load in dependency order; app.js wires everything together.

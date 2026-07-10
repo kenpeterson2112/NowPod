@@ -50,8 +50,27 @@ export const CLAUDE = Object.freeze({
 /** localStorage key for the paste-your-own-key dev flow. */
 export const API_KEY_STORAGE_KEY = 'nowpod_api_key';
 
+/**
+ * Wikinews — second source (spec §5). Same MediaWiki API shape as Wikipedia,
+ * same CORS-friendly origin=* pattern, no auth. Fail-soft: most topics have
+ * no news coverage, and that's fine.
+ */
+export const WIKINEWS = Object.freeze({
+  search: (topic) =>
+    `https://en.wikinews.org/w/api.php?action=query&list=search&srlimit=3` +
+    `&srsearch=${encodeURIComponent(topic)}&format=json&origin=*`,
+  extract: (title) =>
+    `https://en.wikinews.org/w/api.php?action=query&prop=extracts&explaintext` +
+    `&titles=${encodeURIComponent(title)}&format=json&origin=*`,
+  articleUrl: (title) =>
+    `https://en.wikinews.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`,
+});
+
 /** Cap on how much Wikipedia text we feed a generation call ("light depth"). */
 export const SOURCE_CHAR_LIMIT = 8000;
+
+/** Cap on supplementary Wikinews text per generation call. */
+export const NEWS_CHAR_LIMIT = 3000;
 
 /**
  * The two hardcoded hosts (spec §4). Generic, reusable placeholders — not a
@@ -73,5 +92,9 @@ export const HOSTS = Object.freeze({
   },
 });
 
-/** How long the chime waits before auto-continuing, in ms (spec §3). */
-export const CHIME_AUTOCONTINUE_MS = 8000;
+/**
+ * How many closing exchanges form the in-narrative transition (spec §11):
+ * Host A's recap-and-preview plus Host B's riff. The chime panel appears when
+ * the transition starts and auto-continues down the default path when it ends.
+ */
+export const TRANSITION_LINES = 3;

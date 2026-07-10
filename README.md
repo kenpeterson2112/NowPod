@@ -1,9 +1,11 @@
 # NowPod — Bespoke Podcast Generator (POC)
 
 An experimental proof of concept for a **bespoke, steerable podcast generator**.
-You type a topic; two AI hosts research it on Wikipedia and narrate it to you as
-a live-feeling show — generated **chapter by chapter** so audio starts fast, and
-**steerable mid-show** through an in-narrative "chime" moment.
+You type a topic; two AI hosts research it on Wikipedia (plus Wikinews, when
+the topic has news coverage) and narrate it to you as a live-feeling show —
+generated **chapter by chapter** so audio starts fast, and **steerable
+mid-show** through an in-narrative "chime" transition written into each
+chapter's closing lines.
 
 > **Status:** POC implemented. The full loop works — Wikipedia research,
 > chapter-by-chapter generation via the Claude API, browser TTS with two
@@ -24,7 +26,7 @@ See [`docs/spec.md`](docs/spec.md) for the full build spec.
 ## Explicit non-goals for this build
 
 - No real ElevenLabs integration — browser TTS (Web Speech API) stands in.
-- No paid/licensed sources — Wikipedia only.
+- No paid/licensed sources — Wikipedia + Wikinews only.
 - No user accounts, saved history, or persistence.
 - No persona roster — one hardcoded host pairing.
 - No ad breaks.
@@ -71,9 +73,12 @@ NowPod/
    ↓
 [Play Ch. N]       js/tts.js + js/ui.js → two voices, karaoke transcript
    ↓
-[Chime]            js/ui.js          → options + free-text redirect (non-blocking)
+[Chime]            js/ui.js          → in-narrative transition (Host A previews
+   ↓                                   paths, Host B riffs); options + free-text
+   ↓                                   redirect; doing nothing takes the default
+   ↓                                   path when the transition ends
    ↓  (loop until chapter target reached)
-[Done]             full transcript + "start a new one"
+[Done]             full transcript + references + "start a new one"
 ```
 
 The whole flow is coordinated by the state machine in [`js/app.js`](js/app.js).

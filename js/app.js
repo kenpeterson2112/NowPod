@@ -12,7 +12,7 @@
 
 import {
   CHAPTER_TARGETS,
-  CHIME_AUTOCONTINUE_MS,
+  TRANSITION_LINES,
   API_KEY_STORAGE_KEY,
 } from './config.js';
 import * as wikipedia from './wikipedia.js';
@@ -69,6 +69,7 @@ async function onStart() {
     allLines: [],
     priorSummary: '',
     steering: null,
+    steeringKind: 'default',
     runId: ++runCounter,
   };
 
@@ -119,19 +120,41 @@ async function runResearch() {
   }
 
   run.research = await wikipedia.finishResearch(chosen, run.depth);
-  return isCurrentRun(run);
+  if (!isCurrentRun(run)) return false;
+
+  // Reference list (spec §12): the actual articles fetched, not a generic note.
+  ui.renderReferences(
+    [
+      { title: run.research.title, url: run.research.url, source: 'Wikipedia' },
+      run.research.news && {
+        title: run.research.news.title,
+        url: run.research.news.url,
+        source: 'Wikinews',
+      },
+    ].filter(Boolean)
+  );
+  return true;
 }
 
 /** Build the generation input for the current state. */
 function chapterInput() {
   const { research } = state;
-  const source = [research.summary, research.extract ?? ''].filter(Boolean).join('\n\n');
+  const source = [
+    `Encyclopedia background (Wikipedia — "${research.title}"):`,
+    [research.summary, research.extract ?? ''].filter(Boolean).join('\n\n'),
+    research.news
+      ? `\nRecent news coverage (Wikinews — "${research.news.title}"), supplementary:\n${research.news.extract}`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
   return {
     topic: research.title,
     depth: state.depth,
     source,
     priorSummary: state.priorSummary,
     steering: state.steering,
+    steeringKind: state.steeringKind,
     chapterIndex: state.chapterIndex,
     chapterTarget: state.chapterTarget,
   };
@@ -161,9 +184,10 @@ async function runChapterLoop() {
     ui.renderChapterLines(chapter.lines);
     run.allLines.push(...chapter.lines);
 
-    // The chime appears while the chapter is still playing — when the
-    // second-to-last line begins (spec §3: never a modal, never a pause).
-    const chimeAt = Math.max(0, chapter.lines.length - 2);
+    // The chapter's final 2-3 exchanges ARE the transition (spec §11): the
+    // chime panel appears when the transition starts and stays up for Host
+    // B's riff — never a modal, never a pause on the audio.
+    const chimeAt = Math.max(0, chapter.lines.length - TRANSITION_LINES);
     const chime = new Promise((resolve) => {
       chimeResolve = resolve;
     });
@@ -172,15 +196,25 @@ async function runChapterLoop() {
       if (!isCurrentRun(run)) return;
       ui.highlightLine(i);
       if (!isLast && i === chimeAt) {
-        ui.showChime(chapter.chime, CHIME_AUTOCONTINUE_MS).then((choice) => chimeResolve?.(choice));
+        ui.showChime(chapter.chime).then((choice) => chimeResolve?.(choice));
       }
     });
 
     if (!isLast) {
-      // Steering resolves (choice, redirect, timeout, or skip) before the
-      // audio necessarily ends — generation of N+1 starts right away.
-      run.steering = await chime;
+      // When the transition ends (or skip cuts it short) with no action
+      // taken, the show takes the default path Host A named — no dead air,
+      // no "waiting for input" state.
+      playback.then(() => {
+        ui.cancelChime();
+        chimeResolve?.(null);
+      });
+
+      // An early pick resolves before the audio ends, so generation of N+1
+      // starts in parallel with the riff's tail.
+      const picked = await chime;
       if (!isCurrentRun(run)) return;
+      run.steering = picked ?? chapter.chime.options[0] ?? null;
+      run.steeringKind = picked ? 'listener' : 'default';
       run.priorSummary = [run.priorSummary, chapter.summary].filter(Boolean).join(' ');
       run.chapterIndex += 1;
       ui.setChapterHeader(

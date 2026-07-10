@@ -42,6 +42,7 @@ export function init() {
   els.confirmPrompt = document.querySelector('[data-slot="confirm-prompt"]');
   els.confirmOptions = byId('confirm-options');
   els.confirmNoneBtn = byId('confirm-none-btn');
+  els.referenceLists = Array.from(document.querySelectorAll('[data-slot="references"]'));
 }
 
 /**
@@ -134,14 +135,19 @@ export function highlightLine(lineIndex) {
 }
 
 /**
- * Show the non-modal chime panel alongside the still-playing transcript
+ * Show the non-modal chime panel alongside the still-playing transition
  * (spec §3's critical UX rule: never a modal, never pauses audio).
+ *
+ * No internal auto-continue timer: the decision window is the spoken
+ * transition itself — app.js resolves the chime (via cancelChime) when the
+ * chapter's audio ends, and the show takes the default path (spec §11).
+ * A brief pulse on appearance makes the moment noticeable without alarm.
  * @param {import('./claude.js').Chime} chime
- * @param {number} autoContinueMs
- * @returns {Promise<string|null>} Chosen/typed steering text, or null on auto-continue.
+ * @returns {Promise<string|null>} Chosen/typed steering text, or null when
+ *   the transition ended with no action taken.
  */
-export function showChime(chime, autoContinueMs) {
-  cancelChime(); // resolve any stale chime as no-steering before opening a new one
+export function showChime(chime) {
+  cancelChime(); // resolve any stale chime as no-action before opening a new one
 
   return new Promise((resolve) => {
     let settled = false;
@@ -152,15 +158,15 @@ export function showChime(chime, autoContinueMs) {
       resolve(value);
     };
 
-    // Prompt + option buttons
+    // Prompt + option buttons (first option = the default path Host A named)
     els.chimePrompt.textContent = chime.prompt;
     els.chimeOptions.replaceChildren(
-      ...chime.options.map((option) => {
+      ...chime.options.map((option, i) => {
         const li = document.createElement('li');
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'btn';
-        btn.textContent = option;
+        btn.textContent = i === 0 ? `${option} (up next)` : option;
         btn.addEventListener('click', () => settle(option));
         li.append(btn);
         return li;
@@ -176,28 +182,22 @@ export function showChime(chime, autoContinueMs) {
     els.chimeRedirectForm.addEventListener('submit', onSubmit);
     els.chimeRedirectInput.value = '';
 
-    // Auto-continue countdown
-    let remaining = Math.ceil(autoContinueMs / 1000);
-    const renderCountdown = () => {
-      els.chimeCountdown.textContent = `Otherwise we'll just carry on in ${remaining}s…`;
-    };
-    renderCountdown();
-    const ticker = setInterval(() => {
-      remaining -= 1;
-      if (remaining > 0) renderCountdown();
-    }, 1000);
-    const timeout = setTimeout(() => settle(null), autoContinueMs);
+    els.chimeCountdown.textContent =
+      "…or just keep listening — we'll take the first path when the hosts wrap up.";
 
     openChime = {
       cancel: () => settle(null),
       cleanup: () => {
-        clearInterval(ticker);
-        clearTimeout(timeout);
         els.chimeRedirectForm.removeEventListener('submit', onSubmit);
+        els.chimePanel.classList.remove('chime--pulse');
       },
     };
 
     els.chimePanel.hidden = false;
+    // Visibility signal (spec §11): restart the pulse animation on appearance.
+    els.chimePanel.classList.remove('chime--pulse');
+    void els.chimePanel.offsetWidth; // reflow so the animation replays
+    els.chimePanel.classList.add('chime--pulse');
   });
 }
 
@@ -295,6 +295,31 @@ export function cancelSourceConfirm() {
  */
 export function renderFullTranscript(allLines) {
   els.fullTranscript.replaceChildren(...allLines.map(buildLineEl));
+}
+
+/**
+ * Render the episode's reference list (spec §12) — the actual articles this
+ * content was generated from — into every references slot (player + done).
+ * @param {Array<{title: string, url: string, source: string}>} refs
+ */
+export function renderReferences(refs) {
+  for (const list of els.referenceLists) {
+    list.replaceChildren(
+      ...refs.map((ref) => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = ref.url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = ref.title;
+        const src = document.createElement('span');
+        src.className = 'references__source';
+        src.textContent = ` — ${ref.source}`;
+        li.append(a, src);
+        return li;
+      })
+    );
+  }
 }
 
 /**
