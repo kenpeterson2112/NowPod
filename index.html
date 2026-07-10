@@ -2,12 +2,9 @@
   NowPod — Bespoke Podcast Generator (POC)
   Single-page app shell. Three views live in one document and are shown/hidden
   by the state machine in js/app.js:
-    #setup-view   → topic + depth entry
+    #setup-view   → topic + API key + depth entry
     #player-view  → transcript, now-playing, and the chime panel
     #done-view    → full transcript + "start a new one"
-
-  This is scaffolding only — the views are marked up but the logic that drives
-  them is stubbed. See js/app.js.
 -->
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -39,6 +36,23 @@
           placeholder="e.g. the history of the espresso machine"
           required
         />
+      </label>
+
+      <label class="field">
+        <span class="field__label">Claude API key</span>
+        <input
+          id="api-key-input"
+          class="field__input"
+          type="password"
+          name="apiKey"
+          placeholder="sk-ant-…"
+          autocomplete="off"
+          required
+        />
+        <small class="field__hint">
+          POC only: the key stays in your browser (localStorage) and is sent
+          straight to api.anthropic.com — no server involved. See spec §6.
+        </small>
       </label>
 
       <fieldset class="field field--depth">
