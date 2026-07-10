@@ -2,21 +2,42 @@
  * ui.js — all DOM rendering for the POC (spec §3, §5).
  *
  * Owns view switching, transcript rendering + karaoke highlighting, and the
- * non-modal chime panel. Deliberately dumb: it renders what app.js hands it and
- * reports user intent back through callbacks. No fetching, no TTS, no state.
- *
- * SCAFFOLDING ONLY — element lookups are wired; render bodies are stubbed.
+ * non-modal chime panel. Deliberately dumb: it renders what app.js hands it
+ * and reports user intent back through callbacks/promises. No fetching, no
+ * TTS, no run state.
  */
 
 /** Cached element references, populated by init(). */
 const els = {};
 
-/**
- * Grab element references. Call once on load.
- */
+/** <li> elements of the chapter currently playing (highlight targets). */
+let currentChapterEls = [];
+
+/** Cleanup handle for an open chime (timers + resolve), if any. */
+let openChime = null;
+
+/** Grab element references. Call once on load. */
 export function init() {
-  // TODO: populate `els` from document.getElementById for each view + slot.
-  throw new Error('ui.init not implemented');
+  const byId = (id) => document.getElementById(id);
+  els.setupView = byId('setup-view');
+  els.playerView = byId('player-view');
+  els.doneView = byId('done-view');
+  els.setupForm = byId('setup-form');
+  els.topicInput = byId('topic-input');
+  els.apiKeyInput = byId('api-key-input');
+  els.setupStatus = byId('setup-status');
+  els.topicTitle = document.querySelector('[data-slot="topic-title"]');
+  els.chapterProgress = document.querySelector('[data-slot="chapter-progress"]');
+  els.transcript = byId('transcript');
+  els.chimePanel = byId('chime-panel');
+  els.chimePrompt = document.querySelector('[data-slot="chime-prompt"]');
+  els.chimeOptions = byId('chime-options');
+  els.chimeRedirectForm = byId('chime-redirect-form');
+  els.chimeRedirectInput = byId('chime-redirect-input');
+  els.chimeCountdown = document.querySelector('[data-slot="chime-countdown"]');
+  els.skipBtn = byId('skip-btn');
+  els.restartBtn = byId('restart-btn');
+  els.fullTranscript = byId('full-transcript');
 }
 
 /**
@@ -24,74 +45,171 @@ export function init() {
  * @param {'setup'|'player'|'done'} name
  */
 export function showView(name) {
-  // TODO: toggle [hidden] / .view--active across #setup-view/#player-view/#done-view.
-  throw new Error('ui.showView not implemented');
+  const views = { setup: els.setupView, player: els.playerView, done: els.doneView };
+  for (const [key, el] of Object.entries(views)) {
+    el.hidden = key !== name;
+    el.classList.toggle('view--active', key === name);
+  }
 }
 
 /**
  * Read the setup form.
- * @returns {{topic: string, depth: 'quick'|'deep'}}
+ * @returns {{topic: string, depth: 'quick'|'deep', apiKey: string}}
  */
 export function readSetup() {
-  // TODO: read #topic-input + checked depth radio.
-  throw new Error('ui.readSetup not implemented');
+  const depth = els.setupForm.querySelector('input[name="depth"]:checked')?.value ?? 'quick';
+  return {
+    topic: els.topicInput.value.trim(),
+    depth: depth === 'deep' ? 'deep' : 'quick',
+    apiKey: els.apiKeyInput.value.trim(),
+  };
+}
+
+/** Pre-fill the API key field (from localStorage). */
+export function setApiKey(value) {
+  if (value) els.apiKeyInput.value = value;
 }
 
 /**
- * Write a status/progress message (research, generating…).
+ * Write a status/progress message on the setup screen.
  * @param {string} message
+ * @param {boolean} [isError]
  */
-export function setStatus(message) {
-  // TODO: set #setup-status textContent.
-  throw new Error('ui.setStatus not implemented');
+export function setStatus(message, isError = false) {
+  els.setupStatus.textContent = message;
+  els.setupStatus.classList.toggle('status--error', isError);
 }
 
 /**
- * Update the player topbar (topic title + "Chapter N of M").
+ * Update the player topbar (topic title + chapter progress / generating note).
  * @param {string} topicTitle
- * @param {number} chapterIndex 0-based
- * @param {number} chapterTarget
+ * @param {string} progressText  e.g. "Chapter 2 of 4" or "Generating chapter 2…"
  */
-export function setChapterHeader(topicTitle, chapterIndex, chapterTarget) {
-  // TODO: fill data-slot="topic-title" and data-slot="chapter-progress".
-  throw new Error('ui.setChapterHeader not implemented');
+export function setChapterHeader(topicTitle, progressText) {
+  els.topicTitle.textContent = topicTitle;
+  els.chapterProgress.textContent = progressText;
+}
+
+/** Clear the transcript (new run). */
+export function clearTranscript() {
+  els.transcript.replaceChildren();
+  currentChapterEls = [];
+}
+
+/** Build one transcript <li> for a dialogue line. */
+function buildLineEl(line) {
+  const li = document.createElement('li');
+  li.className = `line line--host-${line.speaker.toLowerCase()}`;
+  const speaker = document.createElement('span');
+  speaker.className = 'line__speaker';
+  speaker.textContent = line.speaker === 'A' ? 'Host A' : 'Host B';
+  const text = document.createElement('span');
+  text.className = 'line__text';
+  text.textContent = line.text;
+  li.append(speaker, text);
+  return li;
 }
 
 /**
- * Append a chapter's dialogue lines to the transcript (initially un-highlighted).
+ * Append a chapter's dialogue lines to the transcript (un-highlighted).
+ * They become the current highlight targets for highlightLine().
  * @param {import('./claude.js').DialogueLine[]} lines
  */
 export function renderChapterLines(lines) {
-  // TODO: build <li class="line line--host-a|b"> nodes into #transcript.
-  throw new Error('ui.renderChapterLines not implemented');
+  currentChapterEls = lines.map(buildLineEl);
+  els.transcript.append(...currentChapterEls);
 }
 
 /**
- * Mark one transcript line as the active (currently-spoken) one.
+ * Mark one line of the current chapter as active (karaoke effect).
  * @param {number} lineIndex Index within the current chapter's lines.
  */
 export function highlightLine(lineIndex) {
-  // TODO: move .line--active to the matching <li>; scroll into view.
-  throw new Error('ui.highlightLine not implemented');
+  currentChapterEls.forEach((el, i) => el.classList.toggle('line--active', i === lineIndex));
+  currentChapterEls[lineIndex]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 /**
- * Show the non-modal chime panel. MUST NOT pause audio (spec §5). Resolves when
- * the listener picks/types a redirect, or auto-continues on timeout.
+ * Show the non-modal chime panel alongside the still-playing transcript
+ * (spec §3's critical UX rule: never a modal, never pauses audio).
  * @param {import('./claude.js').Chime} chime
  * @param {number} autoContinueMs
  * @returns {Promise<string|null>} Chosen/typed steering text, or null on auto-continue.
  */
 export function showChime(chime, autoContinueMs) {
-  // TODO: render prompt + option buttons + redirect form into #chime-panel,
-  //       start a countdown, resolve on click/submit/timeout, then hideChime().
-  throw new Error('ui.showChime not implemented');
+  cancelChime(); // resolve any stale chime as no-steering before opening a new one
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const settle = (value) => {
+      if (settled) return;
+      settled = true;
+      hideChime();
+      resolve(value);
+    };
+
+    // Prompt + option buttons
+    els.chimePrompt.textContent = chime.prompt;
+    els.chimeOptions.replaceChildren(
+      ...chime.options.map((option) => {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn';
+        btn.textContent = option;
+        btn.addEventListener('click', () => settle(option));
+        li.append(btn);
+        return li;
+      })
+    );
+
+    // Free-text redirect
+    const onSubmit = (e) => {
+      e.preventDefault();
+      const text = els.chimeRedirectInput.value.trim();
+      if (text) settle(text);
+    };
+    els.chimeRedirectForm.addEventListener('submit', onSubmit);
+    els.chimeRedirectInput.value = '';
+
+    // Auto-continue countdown
+    let remaining = Math.ceil(autoContinueMs / 1000);
+    const renderCountdown = () => {
+      els.chimeCountdown.textContent = `Otherwise we'll just carry on in ${remaining}s…`;
+    };
+    renderCountdown();
+    const ticker = setInterval(() => {
+      remaining -= 1;
+      if (remaining > 0) renderCountdown();
+    }, 1000);
+    const timeout = setTimeout(() => settle(null), autoContinueMs);
+
+    openChime = {
+      cancel: () => settle(null),
+      cleanup: () => {
+        clearInterval(ticker);
+        clearTimeout(timeout);
+        els.chimeRedirectForm.removeEventListener('submit', onSubmit);
+      },
+    };
+
+    els.chimePanel.hidden = false;
+  });
 }
 
-/** Hide the chime panel. */
+/** Hide the chime panel and tear down its listeners/timers. */
 export function hideChime() {
-  // TODO: set #chime-panel hidden, clear injected options.
-  throw new Error('ui.hideChime not implemented');
+  if (openChime) {
+    openChime.cleanup();
+    openChime = null;
+  }
+  els.chimePanel.hidden = true;
+  els.chimeOptions.replaceChildren();
+}
+
+/** Resolve an open chime as "no steering" (used by skip). */
+export function cancelChime() {
+  openChime?.cancel();
 }
 
 /**
@@ -99,8 +217,7 @@ export function hideChime() {
  * @param {import('./claude.js').DialogueLine[]} allLines
  */
 export function renderFullTranscript(allLines) {
-  // TODO: fill #full-transcript from every chapter's lines.
-  throw new Error('ui.renderFullTranscript not implemented');
+  els.fullTranscript.replaceChildren(...allLines.map(buildLineEl));
 }
 
 /**
@@ -108,6 +225,10 @@ export function renderFullTranscript(allLines) {
  * @param {{onStart: () => void, onSkip: () => void, onRestart: () => void}} handlers
  */
 export function bindHandlers(handlers) {
-  // TODO: wire #setup-form submit, #skip-btn, #restart-btn to handlers.
-  throw new Error('ui.bindHandlers not implemented');
+  els.setupForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    handlers.onStart();
+  });
+  els.skipBtn.addEventListener('click', handlers.onSkip);
+  els.restartBtn.addEventListener('click', handlers.onRestart);
 }

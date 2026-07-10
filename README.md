@@ -5,8 +5,9 @@ You type a topic; two AI hosts research it on Wikipedia and narrate it to you as
 a live-feeling show — generated **chapter by chapter** so audio starts fast, and
 **steerable mid-show** through an in-narrative "chime" moment.
 
-> **Status:** Scaffolding only. This repo currently contains the file structure,
-> module boundaries, and stubs. The real implementation has not been written yet.
+> **Status:** POC implemented. The full loop works — Wikipedia research,
+> chapter-by-chapter generation via the Claude API, browser TTS with two
+> voices, karaoke transcript, and the non-blocking chime.
 
 ## What this POC is trying to prove
 
@@ -74,7 +75,7 @@ NowPod/
 
 The whole flow is coordinated by the state machine in [`js/app.js`](js/app.js).
 
-## Running it (once implemented)
+## Running it
 
 This is a static, dependency-free site. Any static file server works, e.g.:
 
@@ -86,12 +87,18 @@ python3 -m http.server 8000
 npx serve .
 ```
 
-Then open <http://localhost:8000>.
+Then open <http://localhost:8000>, paste a Claude API key, type a topic, and
+hit Start.
 
-> **Note:** Chapter generation calls the Claude Messages API, which requires an
-> API key. For a browser-only POC this is a known rough edge — see
-> [`docs/spec.md`](docs/spec.md) §6 and the TODOs in `js/claude.js`. Wikipedia
-> and browser TTS need no key.
+### About the API key
+
+Chapter generation calls the Claude Messages API (`claude-opus-4-8`, direct
+from the browser via the API's CORS opt-in header). Because a browser-only POC
+has no server to hold a secret, you paste your own key on the setup screen —
+it's kept in `localStorage` and sent only to `api.anthropic.com`. This is the
+known rough edge called out in [`docs/spec.md`](docs/spec.md) §6; swapping in a
+tiny backend proxy (and ElevenLabs) later is an infra task, not an
+architecture change. Wikipedia and browser TTS need no key.
 
 ## Known rough edges (flag, don't fix — POC only)
 

@@ -29,12 +29,23 @@ export const WIKIPEDIA = Object.freeze({
     `&titles=${encodeURIComponent(title)}&format=json&origin=*`,
 });
 
-/** Claude Messages API (spec §5). Key handling is a known POC rough edge (§6). */
+/**
+ * Claude Messages API (spec §5). Called directly from the browser with the
+ * CORS opt-in header — the paste-your-own-key flow is the known POC rough
+ * edge from spec §6 (no backend to hold a key).
+ */
 export const CLAUDE = Object.freeze({
   endpoint: 'https://api.anthropic.com/v1/messages',
-  model: 'claude-sonnet-5',
-  maxTokens: 1024,
+  model: 'claude-opus-4-8',
+  apiVersion: '2023-06-01',
+  maxTokens: 2048,
 });
+
+/** localStorage key for the paste-your-own-key dev flow. */
+export const API_KEY_STORAGE_KEY = 'nowpod_api_key';
+
+/** Cap on how much Wikipedia text we feed a generation call ("light depth"). */
+export const SOURCE_CHAR_LIMIT = 8000;
 
 /**
  * The two hardcoded hosts (spec §4). Generic, reusable placeholders — not a
