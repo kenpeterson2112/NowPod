@@ -57,6 +57,8 @@ async function onStart() {
   }
   localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
 
+  ui.cancelSourceConfirm(); // a re-submitted form supersedes a pending confirmation
+
   state = {
     topic,
     depth,
@@ -71,8 +73,8 @@ async function onStart() {
   };
 
   try {
-    await runResearch();
-    if (!isCurrentRun(state)) return;
+    const ready = await runResearch();
+    if (!ready || !isCurrentRun(state)) return;
     ui.setStatus('');
     ui.clearTranscript();
     ui.showView('player');
@@ -90,10 +92,34 @@ function isCurrentRun(run) {
   return run !== null && run === state && run.runId === runCounter;
 }
 
-/** Research step: resolve topic → Wikipedia summary (+ extract on deep dive). */
+/**
+ * Research step with the source-validation checkpoint (between research and
+ * generation): fetch candidate articles; if the match is ambiguous, ask the
+ * listener which one they meant BEFORE any script-generation call is made.
+ * A clear, unambiguous top match proceeds without friction.
+ * @returns {Promise<boolean>} true when research is ready and the run should proceed.
+ */
 async function runResearch() {
-  ui.setStatus(`Researching "${state.topic}" on Wikipedia…`);
-  state.research = await wikipedia.research(state.topic, state.depth);
+  const run = state;
+  ui.setStatus(`Researching "${run.topic}" on Wikipedia…`);
+  const { candidates, needsConfirmation } = await wikipedia.researchCandidates(run.topic);
+  if (!isCurrentRun(run)) return false;
+
+  let chosen = candidates[0];
+  if (needsConfirmation) {
+    ui.setStatus('');
+    chosen = await ui.showSourceConfirm(run.topic, candidates);
+    if (!isCurrentRun(run)) return false;
+    if (!chosen) {
+      // "None of these" — back to the form, no compute spent.
+      ui.setStatus('No problem — refine your topic and hit Start again.');
+      return false;
+    }
+    ui.setStatus(`Researching "${chosen.title}"…`);
+  }
+
+  run.research = await wikipedia.finishResearch(chosen, run.depth);
+  return isCurrentRun(run);
 }
 
 /** Build the generation input for the current state. */
@@ -194,6 +220,7 @@ function onRestart() {
   state = null;
   tts.stop();
   ui.hideChime();
+  ui.hideSourceConfirm();
   ui.setStatus('');
   ui.showView('setup');
 }

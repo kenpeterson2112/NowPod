@@ -193,6 +193,19 @@ h1, h2, h3 { line-height: 1.2; }
 .chime__redirect .field__input { flex: 1; }
 .chime__auto { margin: 0.6rem 0 0; font-size: 0.85rem; color: var(--color-text-muted); }
 
+/* Stacked variant for the source-confirmation candidates */
+.chime__options--stacked { flex-direction: column; align-items: stretch; }
+.candidate {
+  display: grid;
+  gap: 0.15rem;
+  width: 100%;
+  text-align: left;
+}
+.candidate__title { font-weight: 700; }
+.candidate__desc { color: var(--color-text-muted); font-weight: 400; }
+
+#confirm-panel { margin-top: 1.25rem; }
+
 /* --- Player controls --- */
 .player-controls { margin-top: 1rem; }
 
