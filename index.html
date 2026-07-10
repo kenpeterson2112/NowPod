@@ -70,6 +70,21 @@
       <button type="submit" class="btn btn--primary" id="start-btn">Start</button>
     </form>
 
+    <!-- Source confirmation: same "quick check-in before committing compute"
+         pattern as the chime (and the same visual language). Appears only
+         when the topic is ambiguous; script generation waits on the pick. -->
+    <aside id="confirm-panel" class="chime" aria-labelledby="confirm-heading" hidden>
+      <h3 id="confirm-heading" class="chime__heading" data-slot="confirm-prompt">
+        Here's what I found — which one did you mean?
+      </h3>
+      <ul id="confirm-options" class="chime__options chime__options--stacked">
+        <!-- candidate buttons injected -->
+      </ul>
+      <button type="button" class="btn" id="confirm-none-btn">
+        None of these — let me refine my search
+      </button>
+    </aside>
+
     <!-- Research/generation progress messaging surfaces here -->
     <p id="setup-status" class="status" role="status" aria-live="polite"></p>
   </section>

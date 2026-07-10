@@ -38,6 +38,10 @@ export function init() {
   els.skipBtn = byId('skip-btn');
   els.restartBtn = byId('restart-btn');
   els.fullTranscript = byId('full-transcript');
+  els.confirmPanel = byId('confirm-panel');
+  els.confirmPrompt = document.querySelector('[data-slot="confirm-prompt"]');
+  els.confirmOptions = byId('confirm-options');
+  els.confirmNoneBtn = byId('confirm-none-btn');
 }
 
 /**
@@ -210,6 +214,79 @@ export function hideChime() {
 /** Resolve an open chime as "no steering" (used by skip). */
 export function cancelChime() {
   openChime?.cancel();
+}
+
+/** Cleanup handle for an open source-confirmation panel, if any. */
+let openConfirm = null;
+
+/**
+ * Show the source-confirmation panel on the setup view — the same
+ * "quick check-in before committing compute" pattern as the chime, and the
+ * same visual language (it reuses the chime panel styles). No auto-continue:
+ * a validation checkpoint shouldn't spend compute on a maybe-wrong article.
+ * @param {string} topic
+ * @param {import('./wikipedia.js').Candidate[]} candidates
+ * @returns {Promise<import('./wikipedia.js').Candidate|null>}
+ *   The picked candidate, or null for "none of these — refine my search".
+ */
+export function showSourceConfirm(topic, candidates) {
+  cancelSourceConfirm(); // resolve any stale panel before opening a new one
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const settle = (value) => {
+      if (settled) return;
+      settled = true;
+      hideSourceConfirm();
+      resolve(value);
+    };
+
+    els.confirmPrompt.textContent = `Here's what I found for "${topic}" — which one did you mean?`;
+    els.confirmOptions.replaceChildren(
+      ...candidates.map((candidate) => {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn candidate';
+        const title = document.createElement('span');
+        title.className = 'candidate__title';
+        title.textContent = candidate.title;
+        const desc = document.createElement('span');
+        desc.className = 'candidate__desc';
+        desc.textContent =
+          candidate.description || candidate.summary.slice(0, 140) || 'No description available';
+        btn.append(title, desc);
+        btn.addEventListener('click', () => settle(candidate));
+        li.append(btn);
+        return li;
+      })
+    );
+
+    const onNone = () => settle(null);
+    els.confirmNoneBtn.addEventListener('click', onNone);
+
+    openConfirm = {
+      cancel: () => settle(null),
+      cleanup: () => els.confirmNoneBtn.removeEventListener('click', onNone),
+    };
+
+    els.confirmPanel.hidden = false;
+  });
+}
+
+/** Hide the source-confirmation panel and tear down its listeners. */
+export function hideSourceConfirm() {
+  if (openConfirm) {
+    openConfirm.cleanup();
+    openConfirm = null;
+  }
+  els.confirmPanel.hidden = true;
+  els.confirmOptions.replaceChildren();
+}
+
+/** Resolve an open confirmation as "none of these" (used on new run/restart). */
+export function cancelSourceConfirm() {
+  openConfirm?.cancel();
 }
 
 /**

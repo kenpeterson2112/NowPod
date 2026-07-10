@@ -62,8 +62,11 @@ NowPod/
 ```
 [Setup]  topic + depth
    ↓
-[Research]          js/wikipedia.js   → Wikipedia summary + extract
+[Research]          js/wikipedia.js   → top candidate articles + summaries
    ↓
+[Confirm source]   js/ui.js          → only when the topic is ambiguous:
+   ↓                                   "which one did you mean?" before any
+   ↓                                   generation compute is spent
 [Generate Ch. N]   js/claude.js      → structured JSON dialogue + chime
    ↓
 [Play Ch. N]       js/tts.js + js/ui.js → two voices, karaoke transcript
@@ -92,8 +95,10 @@ hit Start.
 
 ### About the API key
 
-Chapter generation calls the Claude Messages API (`claude-opus-4-8`, direct
-from the browser via the API's CORS opt-in header). Because a browser-only POC
+Chapter generation calls the Claude Messages API (`claude-sonnet-5`, direct
+from the browser via the API's CORS opt-in header — Sonnet is plenty for
+grounded, schema-constrained dialogue, and it's faster and cheaper per
+chapter than Opus). Because a browser-only POC
 has no server to hold a secret, you paste your own key on the setup screen —
 it's kept in `localStorage` and sent only to `api.anthropic.com`. This is the
 known rough edge called out in [`docs/spec.md`](docs/spec.md) §6; swapping in a

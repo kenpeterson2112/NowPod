@@ -197,6 +197,9 @@ export async function generateChapter(input, opts) {
       max_tokens: CLAUDE.maxTokens,
       system,
       messages,
+      // Sonnet 5 runs adaptive thinking when `thinking` is omitted; turn it
+      // off — schema-constrained dialogue doesn't need it and latency matters.
+      thinking: { type: 'disabled' },
       output_config: {
         // Low effort keeps chapter latency in the "few seconds" the POC targets.
         effort: 'low',

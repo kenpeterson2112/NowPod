@@ -17,10 +17,13 @@ export const CHAPTER_SHAPE = Object.freeze({
   maxExchanges: 10,
 });
 
+/** How many candidate articles the source-confirmation step offers. */
+export const CANDIDATE_COUNT = 3;
+
 /** Wikipedia endpoints — no auth, CORS-friendly (spec §5). */
 export const WIKIPEDIA = Object.freeze({
   search: (topic) =>
-    `https://en.wikipedia.org/w/api.php?action=query&list=search` +
+    `https://en.wikipedia.org/w/api.php?action=query&list=search&srlimit=5` +
     `&srsearch=${encodeURIComponent(topic)}&format=json&origin=*`,
   summary: (title) =>
     `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`,
@@ -36,9 +39,12 @@ export const WIKIPEDIA = Object.freeze({
  */
 export const CLAUDE = Object.freeze({
   endpoint: 'https://api.anthropic.com/v1/messages',
-  model: 'claude-opus-4-8',
+  // Sonnet: grounded JSON dialogue doesn't need Opus-level reasoning, and
+  // per-chapter latency/cost matter more here.
+  model: 'claude-sonnet-5',
   apiVersion: '2023-06-01',
-  maxTokens: 2048,
+  // Headroom for Sonnet 5's tokenizer (~30% more tokens for the same text).
+  maxTokens: 3072,
 });
 
 /** localStorage key for the paste-your-own-key dev flow. */
