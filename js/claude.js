@@ -40,9 +40,11 @@ import { CLAUDE, CHAPTER_SHAPE, HOSTS } from './config.js';
  * @typedef {Object} GenerateChapterInput
  * @property {string}  topic
  * @property {'quick'|'deep'} depth
- * @property {string}  source          Wikipedia summary/extract to ground in.
+ * @property {string}  source          Wikipedia summary/extract (+ any Wikinews coverage) to ground in.
  * @property {string}  priorSummary    Running summary of earlier chapters ('' for ch. 1).
- * @property {string|null} [steering]  Listener's last chime choice/redirect, if any.
+ * @property {string|null} [steering]  Direction for this chapter, if any.
+ * @property {'listener'|'default'} [steeringKind]  Whether the listener picked it,
+ *   or it's the default path the hosts previewed (taken when the listener stays quiet).
  * @property {number}  chapterIndex    0-based.
  * @property {number}  chapterTarget   Total chapters planned.
  */
@@ -84,7 +86,7 @@ const CHAPTER_SCHEMA = {
  * @returns {{system: string, messages: Array<{role: string, content: string}>}}
  */
 export function buildChapterPrompt(input) {
-  const { topic, depth, source, priorSummary, steering, chapterIndex, chapterTarget } = input;
+  const { topic, depth, source, priorSummary, steering, steeringKind, chapterIndex, chapterTarget } = input;
   const isFirst = chapterIndex === 0;
   const isLast = chapterIndex === chapterTarget - 1;
 
@@ -95,13 +97,19 @@ export function buildChapterPrompt(input) {
     '',
     'Rules:',
     `- Write ${CHAPTER_SHAPE.minExchanges}-${CHAPTER_SHAPE.maxExchanges} short spoken exchanges, alternating between hosts.`,
-    '- Ground every factual claim in the provided source material. If the source is thin on a requested direction, do your best with what it supports and keep the tone honest.',
+    '- Ground every factual claim in the provided source material. If the source is thin on a requested direction, do your best with what it supports and keep the tone honest. News coverage, when provided, is supplementary color — ignore it if it is not relevant to the topic.',
     '- Lines are spoken aloud by TTS: conversational, no stage directions, no markdown, no URLs.',
-    '- The "chime" is an in-narrative moment near the end of the chapter where a host casually floats 2-3 directions the show could go next ("next we could get into X, or Y - let us know, or we\'ll just carry on"). The chime prompt is spoken by a host; keep it natural.',
+    ...(isLast
+      ? [
+          '- This is the FINAL chapter: wrap the show up warmly in the closing lines. Still include a chime object (it will not be shown), with options for hypothetical future episodes.',
+        ]
+      : [
+          '- The FINAL 2-3 exchanges of the chapter ARE the transition into the next chapter, written fully in-character. Never a bolted-on "please choose" or "let us know" callout — the show must never sound like it is waiting on the listener.',
+          '  - First, Host A recaps what the chapter covered and — as a real spoken sentence, not a labeled menu — previews the natural default path for the next chapter, a second more complex thread that would normally come later, and teases a third thing that did not get covered at all.',
+          '  - Then Host B riffs for roughly 10-15 seconds of speech (2-4 sentences): reacting to one of those directions, picking a favorite, or admitting which one they personally found hardest to grasp at first. This riff is the buffer that gives the listener time to steer.',
+          '- The "chime" object mirrors that spoken transition for the UI: "prompt" is a short heading (a few words), and "options" is exactly 3 short labels in the order Host A named them — the DEFAULT path first (it is taken automatically if the listener stays quiet), then the more complex thread, then the teased uncovered thing.',
+        ]),
     '- "summary" is one sentence capturing what this chapter covered, used as memory for the next chapter.',
-    isLast
-      ? '- This is the FINAL chapter: wrap the show up warmly. Still include a chime object (it will not be shown), with options for hypothetical future episodes.'
-      : '- More chapters follow: end on momentum, with the chime teeing up what could come next.',
   ].join('\n');
 
   const userParts = [
@@ -117,13 +125,18 @@ export function buildChapterPrompt(input) {
   if (!isFirst && priorSummary) {
     userParts.push('', `Previously covered: ${priorSummary}`);
   }
-  if (steering) {
+  if (steering && steeringKind === 'listener') {
     userParts.push(
       '',
-      `The listener steered the show at the last chime. Their choice: "${steering}". Make this chapter deliver on that direction.`
+      `The listener steered the show at the last transition. Their choice: "${steering}". Make this chapter deliver on that direction.`
+    );
+  } else if (steering) {
+    userParts.push(
+      '',
+      `The listener stayed quiet at the last transition, so continue down the default path the hosts previewed: "${steering}".`
     );
   } else if (!isFirst) {
-    userParts.push('', 'The listener did not steer at the last chime — carry on naturally from where the show left off.');
+    userParts.push('', 'Carry on naturally from where the show left off.');
   }
 
   userParts.push('', 'Write the next chapter now.');

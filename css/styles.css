@@ -206,8 +206,34 @@ h1, h2, h3 { line-height: 1.2; }
 
 #confirm-panel { margin-top: 1.25rem; }
 
+/* Visibility pulse on chime appearance (spec §11): noticeable, not alarming.
+   Three soft glow cycles, then the panel's normal accent border remains. */
+@keyframes chime-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(108, 140, 255, 0); }
+  50% { box-shadow: 0 0 0 8px rgba(108, 140, 255, 0.35); }
+}
+.chime--pulse { animation: chime-pulse 1.1s ease-in-out 3; }
+
 /* --- Player controls --- */
 .player-controls { margin-top: 1rem; }
+
+/* --- References (spec §12) --- */
+.references { margin-top: 2rem; }
+.references__heading {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+}
+.references__list {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+}
+.references__list a { color: var(--color-accent); }
+.references__source { color: var(--color-text-muted); }
+
+/* --- Footer disclaimer (spec §12) --- */
+.app-footer .disclaimer { display: block; margin-bottom: 0.35rem; }
 
 /* ------------------------------------------------------------------ */
 /* 6. Utilities                                                        */
@@ -216,5 +242,5 @@ h1, h2, h3 { line-height: 1.2; }
 .transcript--full .line { opacity: 1; }
 
 @media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
+  * { transition: none !important; animation: none !important; }
 }

@@ -12,7 +12,7 @@
  * No auth, CORS-friendly.
  */
 
-import { WIKIPEDIA, SOURCE_CHAR_LIMIT, CANDIDATE_COUNT } from './config.js';
+import { WIKIPEDIA, WIKINEWS, SOURCE_CHAR_LIMIT, NEWS_CHAR_LIMIT, CANDIDATE_COUNT } from './config.js';
 
 /**
  * @typedef {Object} Candidate
@@ -23,10 +23,18 @@ import { WIKIPEDIA, SOURCE_CHAR_LIMIT, CANDIDATE_COUNT } from './config.js';
  */
 
 /**
+ * @typedef {Object} NewsResult
+ * @property {string} title    Wikinews article title.
+ * @property {string} extract  Plain-text article body (capped).
+ * @property {string} url      Canonical article URL, for attribution.
+ */
+
+/**
  * @typedef {Object} ResearchResult
  * @property {string} title    Resolved Wikipedia article title.
  * @property {string} summary  Short summary (always populated).
  * @property {string} [extract] Fuller plain-text body (deep dive only).
+ * @property {NewsResult|null} news  Wikinews coverage, when any exists.
  * @property {string} url      Canonical article URL, for attribution.
  */
 
@@ -78,6 +86,30 @@ export async function fetchFullExtract(title) {
   const first = Object.values(pages)[0];
   const text = first?.extract ?? '';
   return text.slice(0, SOURCE_CHAR_LIMIT);
+}
+
+/**
+ * Look up Wikinews coverage for a confirmed topic (spec §5). Fail-soft by
+ * design: most topics have no news coverage, and a Wikinews hiccup must never
+ * block the show — this returns null instead of throwing.
+ * @param {string} topic  The confirmed article title (post-disambiguation).
+ * @returns {Promise<NewsResult|null>}
+ */
+export async function lookupNews(topic) {
+  try {
+    const search = await getJson(WIKINEWS.search(topic));
+    const hit = search?.query?.search?.[0];
+    if (!hit?.title) return null;
+
+    const data = await getJson(WIKINEWS.extract(hit.title));
+    const page = Object.values(data?.query?.pages ?? {})[0];
+    const extract = (page?.extract ?? '').slice(0, NEWS_CHAR_LIMIT);
+    if (!extract) return null;
+
+    return { title: hit.title, extract, url: WIKINEWS.articleUrl(hit.title) };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -149,16 +181,17 @@ export async function finishResearch(candidate, depth) {
     title: candidate.title,
     summary: candidate.summary,
     url: candidate.url,
+    news: null,
   };
 
-  if (depth === 'deep') {
-    // Best-effort: a thin/missing full extract shouldn't sink the run (spec §8).
-    try {
-      result.extract = await fetchFullExtract(candidate.title);
-    } catch {
-      result.extract = '';
-    }
-  }
+  // Wikinews runs in parallel with the deep-dive extract; both fail-soft.
+  const [news, extract] = await Promise.all([
+    lookupNews(candidate.title),
+    depth === 'deep' ? fetchFullExtract(candidate.title).catch(() => '') : Promise.resolve(undefined),
+  ]);
+
+  result.news = news;
+  if (extract !== undefined) result.extract = extract;
 
   return result;
 }
